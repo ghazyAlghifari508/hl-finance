@@ -23,12 +23,38 @@ export interface RecapData {
     totalPiutang: number;
     totalDibayar: number;
   }>;
+  // AC-7.7: bonus dilaporkan terpisah (tidak menggelembungkan omzet/laba).
+  bonusLog: Array<{
+    bonId: string;
+    nomorBon: string;
+    customerName: string;
+    tanggal: string;
+    bonusCount: number;
+  }>;
 }
 
-export async function getRecapData(monthStr: string): Promise<{ data?: RecapData; error?: string }> {
+/**
+ * Menghitung rentang tanggal dari sebuah period.
+ * - "YYYY-MM" → satu bulan penuh (AC-7.4 per bulan)
+ * - "YYYY"    → satu tahun penuh (AC-7.4 per tahun)
+ */
+function resolvePeriodRange(period: string): { startDate: Date; endDate: Date } {
+  const isYearOnly = /^\d{4}$/.test(period);
+  if (isYearOnly) {
+    const year = Number(period);
+    return {
+      startDate: new Date(year, 0, 1, 0, 0, 0, 0),
+      endDate: new Date(year, 11, 31, 23, 59, 59, 999),
+    };
+  }
+  const startDate = new Date(`${period}-01T00:00:00.000Z`);
+  const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { startDate, endDate };
+}
+
+export async function getRecapData(period: string): Promise<{ data?: RecapData; error?: string }> {
   try {
-    const startDate = new Date(`${monthStr}-01T00:00:00.000Z`);
-    const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    const { startDate, endDate } = resolvePeriodRange(period);
 
     const bons = await prisma.bon.findMany({
       where: {
@@ -40,6 +66,7 @@ export async function getRecapData(monthStr: string): Promise<{ data?: RecapData
       include: {
         customer: true,
         lineItems: true,
+        bonusLedger: true,
       },
     });
 
@@ -47,6 +74,7 @@ export async function getRecapData(monthStr: string): Promise<{ data?: RecapData
       overall: { totalOmzet: 0, totalLaba: 0, totalPiutang: 0, totalDibayar: 0 },
       byType: { omzetLM: 0, omzetBR: 0, labaLM: 0, labaBR: 0 },
       byCustomer: [],
+      bonusLog: [],
     };
 
     const customerMap = new Map<string, RecapData["byCustomer"][0]>();
@@ -107,6 +135,17 @@ export async function getRecapData(monthStr: string): Promise<{ data?: RecapData
       if (isLunas && !isBonus) {
         cData.totalOmzet += bonOmzet;
         cData.totalLaba += bonLaba;
+      }
+
+      // 4. Bonus log (AC-7.7): dilaporkan terpisah dari omzet/laba.
+      if (isBonus) {
+        recap.bonusLog.push({
+          bonId: bon.id,
+          nomorBon: bon.nomorBon,
+          customerName: bon.customer?.name || "Unknown",
+          tanggal: bon.tanggal.toISOString(),
+          bonusCount: bon.bonusLedger?.bonusCount ?? 0,
+        });
       }
     });
 

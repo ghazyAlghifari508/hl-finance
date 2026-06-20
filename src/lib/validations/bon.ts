@@ -13,6 +13,8 @@ export const bonSchema = z.object({
   ongkir: z.coerce.number().min(0, "Ongkir tidak boleh negatif").default(0),
   deskripsi: z.string().max(500).optional(),
   isBonus: z.boolean().default(false),
+  // AC-5.5/5.6: satu bon bonus dapat memuat beberapa bonus sekaligus.
+  bonusCount: z.coerce.number().int().min(1, "Jumlah bonus minimal 1").default(1),
   lineItems: z.array(bonLineItemSchema).min(1, "Minimal 1 produk harus ditambahkan"),
 });
 

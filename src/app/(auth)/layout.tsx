@@ -1,4 +1,4 @@
-import { Wallet } from "lucide-react";
+import { Store } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -10,13 +10,13 @@ export default function AuthLayout({
       <div className="w-full max-w-[440px]">
         <div className="flex flex-col items-center mb-10">
           <div className="bg-electric-blue text-paper-white p-3 rounded-[16px] mb-6 shadow-sm">
-            <Wallet className="h-8 w-8" />
+            <Store className="h-8 w-8" />
           </div>
           <h1 className="text-[32px] leading-[1.16] tracking-[-0.96px] font-heading font-semibold text-ink-black text-center mb-3">
-            Welcome to HL Finance
+            HL Sales
           </h1>
           <p className="text-steel text-[16px] leading-[1.5] tracking-[-0.32px] text-center">
-            Kelola penjualan, piutang, dan bonus bisnis HL dengan mudah.
+            Sistem manajemen penjualan, piutang, dan bonus untuk bisnis HL.
           </p>
         </div>
         {children}

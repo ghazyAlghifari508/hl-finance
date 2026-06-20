@@ -4,7 +4,7 @@ import CustomerDetailClient from "@/components/customers/CustomerDetailClient";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
-import { calcBonusAvailable } from "@/lib/calculations/bonus";
+import { getCustomerBonusStats } from "@/app/actions/bonus";
 import { Badge } from "@/components/ui/badge";
 
 export default async function CustomerDetailPage({
@@ -21,9 +21,10 @@ export default async function CustomerDetailPage({
   const currentMonthStr =
     resolvedSearchParams.month || new Date().toISOString().slice(0, 7); // YYYY-MM
 
-  const [customerRes, bonsRes] = await Promise.all([
+  const [customerRes, bonsRes, bonusStatsRes] = await Promise.all([
     getCustomerById(customerId),
     getBons(),
+    getCustomerBonusStats(customerId),
   ]);
 
   if (customerRes.error || !customerRes.data) {
@@ -79,20 +80,9 @@ export default async function CustomerDetailPage({
     }
   });
 
-  // Calculate bonus status globally (all time)
-  let accumulatedBonusOmzet = 0;
-  customerBons.forEach((b: any) => {
-    if (b.status === "lunas" && !b.isBonus) {
-      accumulatedBonusOmzet += b.computedOmzet;
-    }
-  });
-
-  // Asumsi dummy alreadyGranted = 0 untuk sekarang (Phase 6.4 belum menyentuh mutasi bonusLedger)
-  const bonusesAvailable = calcBonusAvailable(
-    accumulatedBonusOmzet,
-    customer.bonusThreshold,
-    0
-  );
+  // AC-5.4: bonus tersedia = floor(omzet lunas / threshold) − bonus yang sudah diberikan.
+  // Sumber tunggal lewat getCustomerBonusStats (memperhitungkan BonusLedger), konsisten dgn dashboard.
+  const bonusesAvailable = bonusStatsRes.data?.available ?? 0;
 
   return (
     <div className="space-y-6">

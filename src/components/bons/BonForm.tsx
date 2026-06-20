@@ -2,36 +2,56 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { createBon } from "@/app/actions/bons";
+import { createBon, updateBon } from "@/app/actions/bons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, X, ArrowLeft } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { calcLineItem, calcBonTotals } from "@/lib/calculations/bon";
+
+interface BonFormInitialData {
+  id: string;
+  nomorBon: string;
+  tanggal: string | Date;
+  customerId: string;
+  ongkir: number;
+  deskripsi?: string | null;
+  isBonus: boolean;
+  lineItems: { productId: string; quantity: number }[];
+}
 
 interface BonFormProps {
   customers: any[];
   products: any[];
   bonusStats: Record<string, number>;
+  mode?: "create" | "edit";
+  initialData?: BonFormInitialData;
 }
 
-export function BonForm({ customers, products, bonusStats }: BonFormProps) {
+export function BonForm({ customers, products, bonusStats, mode = "create", initialData }: BonFormProps) {
   const router = useRouter();
+  const isEdit = mode === "edit";
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form State
-  const [tanggal, setTanggal] = useState<string>(new Date().toISOString().split("T")[0]);
-  const [nomorBon, setNomorBon] = useState<string>("");
-  const [customerId, setCustomerId] = useState<string>("");
-  const [ongkir, setOngkir] = useState<number>(0);
-  const [deskripsi, setDeskripsi] = useState<string>("");
-  const [isBonus, setIsBonus] = useState<boolean>(false);
-  const [lineItems, setLineItems] = useState<{ productId: string; quantity: number }[]>([
-    { productId: "", quantity: 1 }
-  ]);
+  // Form State (prefill saat edit)
+  const [tanggal, setTanggal] = useState<string>(
+    initialData
+      ? new Date(initialData.tanggal).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0]
+  );
+  const [nomorBon, setNomorBon] = useState<string>(initialData?.nomorBon ?? "");
+  const [customerId, setCustomerId] = useState<string>(initialData?.customerId ?? "");
+  const [ongkir, setOngkir] = useState<number>(initialData?.ongkir ?? 0);
+  const [deskripsi, setDeskripsi] = useState<string>(initialData?.deskripsi ?? "");
+  const [isBonus, setIsBonus] = useState<boolean>(initialData?.isBonus ?? false);
+  const [bonusCount, setBonusCount] = useState<number>(1);
+  const [lineItems, setLineItems] = useState<{ productId: string; quantity: number }[]>(
+    initialData?.lineItems?.length ? initialData.lineItems : [{ productId: "", quantity: 1 }]
+  );
 
   // Derived State (Calculations)
   const selectedCustomer = useMemo(() => {
@@ -41,9 +61,13 @@ export function BonForm({ customers, products, bonusStats }: BonFormProps) {
   const availableBonuses = selectedCustomer ? (bonusStats[selectedCustomer.id] || 0) : 0;
   const canClaimBonus = availableBonuses > 0;
 
-  // Auto-reset isBonus if user changes customer to someone without bonuses
-  if (isBonus && !canClaimBonus && customerId) {
+  // Auto-reset isBonus jika user ganti ke customer tanpa bonus (hanya mode create).
+  if (!isEdit && isBonus && !canClaimBonus && customerId) {
     setIsBonus(false);
+  }
+  // Clamp jumlah bonus agar tidak melebihi yang tersedia.
+  if (!isEdit && isBonus && bonusCount > availableBonuses && availableBonuses > 0) {
+    setBonusCount(availableBonuses);
   }
 
   const calculationPreview = useMemo(() => {
@@ -75,7 +99,6 @@ export function BonForm({ customers, products, bonusStats }: BonFormProps) {
       };
     });
 
-    // Only sum valid products
     const validLines = calculatedLines.filter(l => l.productDetails);
     const totals = calcBonTotals(validLines, ongkir);
 
@@ -88,7 +111,7 @@ export function BonForm({ customers, products, bonusStats }: BonFormProps) {
   };
 
   const handleRemoveLine = (index: number) => {
-    if (lineItems.length === 1) return; // Prevent removing last line
+    if (lineItems.length === 1) return;
     const list = [...lineItems];
     list.splice(index, 1);
     setLineItems(list);
@@ -105,7 +128,6 @@ export function BonForm({ customers, products, bonusStats }: BonFormProps) {
     setLoading(true);
     setError(null);
 
-    // Prepare data
     const formData = {
       nomorBon,
       tanggal: new Date(tanggal),
@@ -113,6 +135,7 @@ export function BonForm({ customers, products, bonusStats }: BonFormProps) {
       ongkir,
       deskripsi,
       isBonus,
+      bonusCount: isBonus ? bonusCount : 1,
       lineItems: lineItems.filter(l => l.productId !== "")
     };
 
@@ -122,11 +145,15 @@ export function BonForm({ customers, products, bonusStats }: BonFormProps) {
       return;
     }
 
-    const res = await createBon(formData);
+    const res = isEdit && initialData
+      ? await updateBon(initialData.id, formData)
+      : await createBon(formData);
 
     if (res.error) {
       setError(res.error);
       setLoading(false);
+    } else if (isEdit && initialData) {
+      router.push(`/bons/${initialData.id}`);
     } else {
       router.push("/bons");
     }
@@ -188,24 +215,57 @@ export function BonForm({ customers, products, bonusStats }: BonFormProps) {
               </select>
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
-              <input
-                type="checkbox"
-                id="isBonus"
-                checked={isBonus}
-                disabled={!canClaimBonus || !selectedCustomer}
-                onChange={(e) => setIsBonus(e.target.checked)}
-                className="h-4 w-4 rounded border-fog text-electric-blue focus:ring-electric-blue disabled:opacity-50"
-              />
-              <Label htmlFor="isBonus" className={`font-normal ${!canClaimBonus ? "text-steel" : "cursor-pointer"}`}>
-                Tandai sebagai Bon Bonus (Gratis)
-              </Label>
-              {selectedCustomer && (
-                <span className="ml-auto text-[12px] font-medium bg-parchment px-2 py-1 rounded-full border border-sand">
-                  {availableBonuses} Tersedia
-                </span>
-              )}
-            </div>
+            {/* Bonus toggle — hanya untuk mode create (mekanisme bonus tidak diubah lewat edit) */}
+            {isEdit ? (
+              initialData?.isBonus && (
+                <div className="flex items-center gap-2 pt-2 text-[14px] text-electric-blue font-medium">
+                  <span className="text-[10px] font-bold tracking-wider uppercase bg-electric-blue/10 px-2 py-0.5 rounded-full">
+                    Bon Bonus
+                  </span>
+                  <span className="text-steel font-normal">Produk gratis — tidak dihitung omzet/laba.</span>
+                </div>
+              )
+            ) : (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isBonus"
+                    checked={isBonus}
+                    disabled={!canClaimBonus || !selectedCustomer}
+                    onChange={(e) => setIsBonus(e.target.checked)}
+                    className="h-4 w-4 rounded border-fog text-electric-blue focus:ring-electric-blue disabled:opacity-50"
+                  />
+                  <Label htmlFor="isBonus" className={`font-normal ${!canClaimBonus ? "text-steel" : "cursor-pointer"}`}>
+                    Tandai sebagai Bon Bonus (Gratis)
+                  </Label>
+                  {selectedCustomer && (
+                    <span className="ml-auto text-[12px] font-medium bg-parchment px-2 py-1 rounded-full border border-sand">
+                      {availableBonuses} Tersedia
+                    </span>
+                  )}
+                </div>
+
+                {/* AC-5.5/5.6: jumlah bonus yang di-assign dalam satu bon */}
+                {isBonus && (
+                  <div className="flex items-center gap-3 pl-6">
+                    <Label htmlFor="bonusCount" className="text-[13px] text-steel font-normal">
+                      Jumlah Bonus
+                    </Label>
+                    <Input
+                      id="bonusCount"
+                      type="number"
+                      min={1}
+                      max={availableBonuses}
+                      value={bonusCount || ""}
+                      onChange={(e) => setBonusCount(Number(e.target.value))}
+                      className="h-9 w-24 text-[14px]"
+                    />
+                    <span className="text-[12px] text-steel">dari {availableBonuses} tersedia</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Line Items Section */}
@@ -373,9 +433,9 @@ export function BonForm({ customers, products, bonusStats }: BonFormProps) {
 
                 <div className="pt-6">
                   <Button type="submit" variant="primary" className="w-full" disabled={loading || lineItems.length === 0}>
-                    {loading ? "Menyimpan..." : "Simpan & Buat Bon"}
+                    {loading ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan & Buat Bon"}
                   </Button>
-                  <Link href="/bons" className="block mt-3">
+                  <Link href={isEdit && initialData ? `/bons/${initialData.id}` : "/bons"} className="block mt-3">
                     <Button type="button" variant="ghost" className="w-full">
                       Batal
                     </Button>

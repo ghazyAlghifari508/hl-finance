@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Edit } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SettleBonButton } from "@/components/bons/SettleBonButton";
 
 export default async function BonDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -39,12 +40,16 @@ export default async function BonDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
 
-        {/* Placeholder for Settlement Action (Phase 6.4) */}
-        {bon.status === "piutang" && (
-          <Button variant="primary">
-            Tandai Lunas
-          </Button>
-        )}
+        {/* AC-4.10: edit transaksi; AC-6.6: settle satu Bon */}
+        <div className="flex items-center gap-3">
+          <Link href={`/bons/${bon.id}/edit`}>
+            <Button variant="ghost" className="border border-sand">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          </Link>
+          {bon.status === "piutang" && <SettleBonButton bonId={bon.id} />}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

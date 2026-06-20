@@ -89,21 +89,27 @@ const formatIDR = (val: number) => {
 };
 
 interface RecapDocumentProps {
-  monthStr: string;
+  period: string;
+  mode?: "month" | "year";
   data: RecapData;
 }
 
-export const RecapDocument = ({ monthStr, data }: RecapDocumentProps) => {
-  const [year, month] = monthStr.split("-");
-  const dateObj = new Date(Number(year), Number(month) - 1, 1);
-  const monthName = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(dateObj);
+export const RecapDocument = ({ period, mode = "month", data }: RecapDocumentProps) => {
+  let periodLabel: string;
+  if (mode === "year") {
+    periodLabel = period;
+  } else {
+    const [year, month] = period.split("-");
+    const dateObj = new Date(Number(year), Number(month) - 1, 1);
+    periodLabel = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(dateObj);
+  }
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>Laporan Recap Bisnis</Text>
-          <Text style={styles.subtitle}>Periode: {monthName} | HL Finance</Text>
+          <Text style={styles.subtitle}>Periode: {periodLabel} | HL Sales</Text>
         </View>
 
         {/* OVERALL SUMMARY */}
@@ -163,6 +169,28 @@ export const RecapDocument = ({ monthStr, data }: RecapDocumentProps) => {
           {data.byCustomer.length === 0 && (
             <View style={styles.tableRow}>
               <Text style={{ fontSize: 10, color: "#6e6e6e", padding: 10 }}>Tidak ada data transaksi.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* BONUS LOG (AC-7.7) — dilaporkan terpisah, di luar omzet/laba */}
+        <Text style={styles.sectionTitle}>Log Bonus (Tidak Dihitung Omzet/Laba)</Text>
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.colLeft, styles.thText]}>Nomor Bon</Text>
+            <Text style={[styles.colLeft, styles.thText]}>Customer</Text>
+            <Text style={[styles.colRight, styles.thText]}>Jumlah Bonus</Text>
+          </View>
+          {data.bonusLog.map((b) => (
+            <View key={b.bonId} style={styles.tableRow}>
+              <Text style={styles.colLeft}>{b.nomorBon}</Text>
+              <Text style={styles.colLeft}>{b.customerName}</Text>
+              <Text style={[styles.colRight, styles.valuePositive]}>{b.bonusCount}</Text>
+            </View>
+          ))}
+          {data.bonusLog.length === 0 && (
+            <View style={styles.tableRow}>
+              <Text style={{ fontSize: 10, color: "#6e6e6e", padding: 10 }}>Tidak ada transaksi bonus.</Text>
             </View>
           )}
         </View>

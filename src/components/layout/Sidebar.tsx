@@ -11,7 +11,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Wallet
+  Store
 } from "lucide-react";
 
 export function Sidebar() {
@@ -31,9 +31,9 @@ export function Sidebar() {
       <div className="h-20 flex items-center px-6 border-b border-sand">
         <Link href="/" className="flex items-center gap-3 text-ink-black group">
           <div className="bg-electric-blue text-paper-white p-2 rounded-[12.8px] group-hover:bg-electric-blue/90 transition-colors">
-            <Wallet className="h-5 w-5" />
+            <Store className="h-5 w-5" />
           </div>
-          <span className="font-heading font-semibold text-[20px] tracking-[-0.46px]">HL Finance</span>
+          <span className="font-heading font-semibold text-[20px] tracking-[-0.46px]">HL Sales</span>
         </Link>
       </div>
 

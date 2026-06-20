@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { formatCurrency } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { RecapData } from "@/app/actions/recap";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,19 +22,43 @@ import {
 
 interface RecapClientProps {
   data: RecapData;
+  mode: "month" | "year";
   availableMonths: string[];
-  selectedMonth: string;
+  availableYears: string[];
+  selectedPeriod: string;
 }
 
-export default function RecapClient({ data, availableMonths, selectedMonth }: RecapClientProps) {
+export default function RecapClient({
+  data,
+  mode,
+  availableMonths,
+  availableYears,
+  selectedPeriod,
+}: RecapClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"overall" | "customer" | "type">("overall");
+  const [activeTab, setActiveTab] = useState<"overall" | "customer" | "type" | "bonus">("overall");
 
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newMonth = e.target.value;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("month", newMonth);
+  const periodOptions = mode === "year" ? availableYears : availableMonths;
+
+  const formatPeriodLabel = (value: string) => {
+    if (mode === "year") return value;
+    const [year, month] = value.split("-");
+    const date = new Date(Number(year), Number(month) - 1, 1);
+    return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(date);
+  };
+
+  const handlePeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const params = new URLSearchParams();
+    params.set("mode", mode);
+    params.set("period", e.target.value);
+    router.push(`/recap?${params.toString()}`);
+  };
+
+  const handleModeChange = (newMode: "month" | "year") => {
+    if (newMode === mode) return;
+    const params = new URLSearchParams();
+    params.set("mode", newMode);
+    // Tidak set period → server pakai default period mode tsb (bulan/tahun ini).
     router.push(`/recap?${params.toString()}`);
   };
 
@@ -72,28 +96,41 @@ export default function RecapClient({ data, availableMonths, selectedMonth }: Re
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-[32px] leading-[1.16] tracking-[-0.96px] font-semibold">Laporan Recap</h1>
-          <p className="text-steel text-[16px] mt-1">Ringkasan bisnis bulan ini (Cash Basis)</p>
+          <p className="text-steel text-[16px] mt-1">
+            Ringkasan bisnis {mode === "year" ? "per tahun" : "per bulan"} (Cash Basis)
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Toggle Bulan / Tahun (AC-7.4) */}
+          <div className="flex bg-parchment rounded-[8px] p-1 border border-sand">
+            {(["month", "year"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => handleModeChange(m)}
+                className={cn(
+                  "px-3 py-1.5 text-[13px] font-medium rounded-[6px] transition-colors",
+                  mode === m ? "bg-paper-white text-electric-blue shadow-sm" : "text-steel hover:text-ink-black"
+                )}
+              >
+                {m === "month" ? "Bulan" : "Tahun"}
+              </button>
+            ))}
+          </div>
+
           <select
-            value={selectedMonth}
-            onChange={handleMonthChange}
+            value={selectedPeriod}
+            onChange={handlePeriodChange}
             className="h-10 rounded-[8px] border border-fog bg-paper-white px-3 py-1 text-[14px] text-ink-black focus:outline-none focus:ring-2 focus:ring-electric-blue"
           >
-            {availableMonths.map((m) => {
-              const [year, month] = m.split("-");
-              const date = new Date(Number(year), Number(month) - 1, 1);
-              const label = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(date);
-              return (
-                <option key={m} value={m}>
-                  {label}
-                </option>
-              );
-            })}
+            {periodOptions.map((p) => (
+              <option key={p} value={p}>
+                {formatPeriodLabel(p)}
+              </option>
+            ))}
           </select>
 
-          <Link href={`/api/export/recap?month=${selectedMonth}`} target="_blank">
+          <Link href={`/api/export/recap?period=${selectedPeriod}&mode=${mode}`} target="_blank">
             <Button variant="ghost" size="sm" className="h-10 border border-sand">
               <Download className="mr-2 h-4 w-4" />
               PDF
@@ -103,11 +140,12 @@ export default function RecapClient({ data, availableMonths, selectedMonth }: Re
       </div>
 
       {/* Custom Tabs */}
-      <div className="flex bg-parchment rounded-[12.8px] p-1 border border-sand w-full max-w-lg">
+      <div className="flex bg-parchment rounded-[12.8px] p-1 border border-sand w-full max-w-2xl">
         {[
           { id: "overall", label: "Overall" },
           { id: "customer", label: "Per Customer" },
           { id: "type", label: "Per Tipe Produk" },
+          { id: "bonus", label: "Bonus Log" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -243,6 +281,48 @@ export default function RecapClient({ data, availableMonths, selectedMonth }: Re
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: BONUS LOG (AC-7.7) */}
+      {activeTab === "bonus" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="bg-electric-blue/10 border border-electric-blue/20 rounded-[16px] p-4 text-[14px] text-steel">
+            Transaksi bonus dicatat terpisah dan <span className="font-medium text-ink-black">tidak dihitung</span> dalam Omzet, Laba, maupun Piutang.
+          </div>
+
+          <div className="bg-paper-white rounded-[24px] border border-sand overflow-hidden">
+            <table className="w-full text-left text-[14px]">
+              <thead className="bg-parchment text-steel border-b border-sand uppercase tracking-wider text-[12px] font-medium">
+                <tr>
+                  <th className="px-6 py-4">Nomor Bon</th>
+                  <th className="px-6 py-4">Customer</th>
+                  <th className="px-6 py-4">Tanggal</th>
+                  <th className="px-6 py-4 text-right">Jumlah Bonus</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-sand">
+                {data.bonusLog.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-12 text-center text-steel">
+                      Tidak ada transaksi bonus pada periode ini.
+                    </td>
+                  </tr>
+                ) : (
+                  data.bonusLog.map((b) => (
+                    <tr key={b.bonId} className="hover:bg-parchment/50">
+                      <td className="px-6 py-4 font-medium text-ink-black">{b.nomorBon}</td>
+                      <td className="px-6 py-4">{b.customerName}</td>
+                      <td className="px-6 py-4 text-steel">{formatDate(b.tanggal)}</td>
+                      <td className="px-6 py-4 text-right tabular-nums font-medium text-electric-blue">
+                        {b.bonusCount}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

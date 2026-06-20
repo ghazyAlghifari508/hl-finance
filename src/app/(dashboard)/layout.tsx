@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { createClient } from "@/lib/supabase/server";
+import { Store } from "lucide-react";
 
 export default async function DashboardLayout({
   children,
@@ -26,9 +27,9 @@ export default async function DashboardLayout({
         <header className="sticky top-0 z-30 flex h-20 items-center justify-between gap-4 border-b border-sand bg-paper-white/90 px-6 backdrop-blur-md">
           <div className="font-heading font-semibold text-[20px] tracking-[-0.46px] md:hidden text-ink-black flex items-center gap-2">
             <div className="bg-electric-blue text-paper-white p-1.5 rounded-[8px]">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+              <Store className="h-4 w-4" />
             </div>
-            HL Finance
+            HL Sales
           </div>
 
           <div className="hidden md:block" />

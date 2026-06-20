@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HL Finance",
-  description: "Aplikasi pengelolaan penjualan, piutang, dan bonus untuk bisnis HL",
+  title: "HL Sales",
+  description: "Sistem manajemen penjualan, piutang, dan bonus untuk bisnis HL",
 };
 
 export default function RootLayout({
