@@ -59,17 +59,10 @@ export default function HomePage() {
             HL Finance membantu Anda membaca arus kas, memahami budget, dan mencatat transaksi tanpa dashboard yang berisik.
           </p>
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-3 max-w-xl">
-            <div className="flex-1">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="h-14 w-full rounded-[12.8px] border border-fog bg-paper-white px-4 text-[16px] outline-none focus:border-electric-blue"
-              />
-            </div>
-            <Link href="/dashboard">
-              <Button variant="secondary" size="lg" className="w-full sm:w-auto">
-                Open Dashboard
+          <div className="mt-8">
+            <Link href="/login">
+              <Button variant="primary" size="lg">
+                Login ke Aplikasi
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

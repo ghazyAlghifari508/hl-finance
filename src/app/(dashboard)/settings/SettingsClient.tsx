@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { User, Lock, Wallet, LogOut } from "lucide-react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { updateProfile, updatePassword, updatePreferences } from "@/app/actions/settings";
+import { updateProfile, updatePassword } from "@/app/actions/settings";
 import { signOut } from "@/app/actions/auth";
 
 function SubmitButton({ text }: { text: string }) {
@@ -22,7 +22,6 @@ function SubmitButton({ text }: { text: string }) {
 export default function SettingsClient({ profile }: { profile: any }) {
   const [profileState, profileAction] = useActionState(updateProfile, null);
   const [passwordState, passwordAction] = useActionState(updatePassword, null);
-  const [prefState, prefAction] = useActionState(updatePreferences, null);
 
   return (
     <div className="space-y-8">

@@ -41,3 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 # prisma — generated client lives in node_modules (already ignored)
+
+.vercel

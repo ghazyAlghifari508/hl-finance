@@ -16,7 +16,7 @@ export default function AuthLayout({
             Welcome to HL Finance
           </h1>
           <p className="text-steel text-[16px] leading-[1.5] tracking-[-0.32px] text-center">
-            Kelola keuangan bisnis dan personal Anda dengan cara yang lebih rapi.
+            Kelola penjualan, piutang, dan bonus bisnis HL dengan mudah.
           </p>
         </div>
         {children}

@@ -78,27 +78,3 @@ export async function updatePassword(prevState: any, formData: FormData) {
 
   return { success: true };
 }
-
-const preferencesSchema = z.object({
-  currency: z.enum(["IDR", "USD", "EUR"]),
-});
-
-export async function updatePreferences(prevState: any, formData: FormData) {
-  const currency = formData.get("currency") as string;
-
-  const result = preferencesSchema.safeParse({ currency });
-
-  if (!result.success) {
-    return { error: result.error.issues[0].message };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({
-    data: { currency },
-  });
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/settings");
-  return { success: true };
-}
