@@ -43,3 +43,12 @@ next-env.d.ts
 # prisma — generated client lives in node_modules (already ignored)
 
 .vercel
+
+# internal docs — tidak dipublish ke repo
+AGENTS.md
+CLAUDE.md
+DESIGN.md
+MASTER-TRANSFORMATION-PROMPT.md
+PRD.md
+acceptance-criteria-HL-app.md
+techstack.md
