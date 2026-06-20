@@ -1,0 +1,120 @@
+// HL Sales & Receivables Management — Prisma schema
+// Source of truth: techstack.md §3.4
+// Currency stored as Decimal(15,2) — never float (CLAUDE.md §4.4).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Pooled (PgBouncer) connection used by the app
+  directUrl = env("DIRECT_URL") // Direct connection used by Prisma Migrate / CLI
+}
+
+model Customer {
+  id             String   @id @default(uuid())
+  name           String
+  bonusThreshold Decimal  @map("bonus_threshold") @db.Decimal(15, 2)
+  isDeleted      Boolean  @default(false) @map("is_deleted")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  discounts   CustomerDiscount[]
+  bons        Bon[]
+  bonusLedger BonusLedger[]
+
+  @@map("customers")
+}
+
+model CustomerDiscount {
+  id              String      @id @default(uuid())
+  customerId      String      @map("customer_id")
+  productType     ProductType @map("product_type")
+  stepOrder       Int         @map("step_order")
+  discountPercent Decimal     @map("discount_percent") @db.Decimal(5, 2)
+  customer        Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productType, stepOrder])
+  @@map("customer_discounts")
+}
+
+model Product {
+  id         String      @id @default(uuid())
+  name       String
+  hargaModal Decimal     @map("harga_modal") @db.Decimal(15, 2)
+  hargaBase  Decimal     @map("harga_base") @db.Decimal(15, 2)
+  tipe       ProductType
+  isDeleted  Boolean     @default(false) @map("is_deleted")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  lineItems BonLineItem[]
+
+  @@map("products")
+}
+
+model Bon {
+  id            String    @id @default(uuid())
+  nomorBon      String    @unique @map("nomor_bon")
+  tanggal       DateTime
+  customerId    String    @map("customer_id")
+  deskripsi     String?
+  ongkir        Decimal   @default(0) @db.Decimal(15, 2)
+  isBonus       Boolean   @default(false) @map("is_bonus")
+  status        BonStatus @default(piutang)
+  paymentDate   DateTime? @map("payment_date")
+  computedOmzet Decimal   @default(0) @map("computed_omzet") @db.Decimal(15, 2)
+  computedLaba  Decimal   @default(0) @map("computed_laba") @db.Decimal(15, 2)
+  totalOwed     Decimal   @default(0) @map("total_owed") @db.Decimal(15, 2)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  lineItems   BonLineItem[]
+  bonusLedger BonusLedger?
+
+  @@map("bons")
+}
+
+model BonLineItem {
+  id                  String      @id @default(uuid())
+  bonId               String      @map("bon_id")
+  productId           String      @map("product_id")
+  quantity            Int
+  productType         ProductType @map("product_type")
+  hargaBaseSnapshot   Decimal     @map("harga_base_snapshot") @db.Decimal(15, 2)
+  discountedUnitPrice Decimal     @map("discounted_unit_price") @db.Decimal(15, 2)
+  lineOmzet           Decimal     @map("line_omzet") @db.Decimal(15, 2)
+  lineLaba            Decimal     @map("line_laba") @db.Decimal(15, 2)
+  createdAt           DateTime    @default(now()) @map("created_at")
+
+  bon     Bon     @relation(fields: [bonId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("bon_line_items")
+}
+
+model BonusLedger {
+  id            String   @id @default(uuid())
+  customerId    String   @map("customer_id")
+  bonId         String   @unique @map("bon_id")
+  bonusCount    Int      @map("bonus_count")
+  omzetConsumed Decimal  @map("omzet_consumed") @db.Decimal(15, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  bon      Bon      @relation(fields: [bonId], references: [id], onDelete: Cascade)
+
+  @@map("bonus_ledger")
+}
+
+enum ProductType {
+  LM
+  BR
+}
+
+enum BonStatus {
+  piutang
+  lunas
+}
